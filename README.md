@@ -15,7 +15,7 @@ A Flutter application for controlling a Hexapod robot using a UDP socket. This a
    ```
 2. Change into the project directory:
    ```sh
-   cd hexapod-robot-controller
+   cd hexa_pod_udp
    ```
 3. Install dependencies:
    ```sh
