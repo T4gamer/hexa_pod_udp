@@ -11,7 +11,7 @@ A Flutter application for controlling a Hexapod robot using a UDP socket. This a
 
 1. Clone this repository:
    ```sh
-   git clone <your-repo-url>
+   git clone https://github.com/T4gamer/hexa_pod_udp.git
    ```
 2. Change into the project directory:
    ```sh
