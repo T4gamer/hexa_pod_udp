@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hexapod_udp/udp_service.dart';
 
@@ -5,12 +7,10 @@ class HexaPodControlPage extends StatefulWidget {
   const HexaPodControlPage({super.key});
 
   @override
-  State<HexaPodControlPage> createState() =>
-      _HexaPodControlPageState();
+  State<HexaPodControlPage> createState() => _HexaPodControlPageState();
 }
 
-class _HexaPodControlPageState
-    extends State<HexaPodControlPage> {
+class _HexaPodControlPageState extends State<HexaPodControlPage> {
   bool isForwardPressed = false;
   bool isBackwardPressed = false;
   bool isLeftPressed = false;
@@ -24,6 +24,14 @@ class _HexaPodControlPageState
   bool rotateLeft = false;
   bool rotateRight = false;
   bool turboOn = false;
+  late StreamSubscription<String> _dataSubscription;
+
+  @override
+  void dispose() {
+    // _dataSubscription.cancel();
+    UDPService().dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +41,89 @@ class _HexaPodControlPageState
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              spacing: 16,
+              children: [
+                StreamBuilder<String>(
+                  stream: UDPService().receiveDataStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      final receivedMessage = snapshot.data!;
+                      final parts = receivedMessage.split(' ');
+                      String humidity = '';
+                      String temperature = '';
+                      String airQuality = ''; // Changed variable name
+
+                      for (final part in parts) {
+                        if (part.startsWith('Humidity:')) {
+                          humidity = part.split(':')[1];
+                        } else if (part.startsWith('Temperature:')) {
+                          temperature = part.split(':')[1];
+                        } else if (part.startsWith('Gas:')) {
+                          airQuality =
+                              part.split(
+                                ':',
+                              )[1]; // Assigning to the new variable
+                        }
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.3),
+                              spreadRadius: 2,
+                              blurRadius: 5,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Humidity: $humidity',
+                              style: const TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            const SizedBox(height: 8.0),
+                            Text(
+                              'Temperature: $temperature °C',
+                              style: const TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(height: 8.0),
+                            Text(
+                              'Air Quality: $airQuality ppm',
+                              // Changed the label here
+                              style: const TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else if (snapshot.hasError) {
+                      return Text('Error: ${snapshot.error}');
+                    } else {
+                      return const Text('Waiting for data...');
+                    }
+                  },
+                ),
+              ],
+            ),
             Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -53,7 +144,7 @@ class _HexaPodControlPageState
                   'rotate Right',
                   Icons.rotate_right,
                   rotateRight,
-                      () {
+                  () {
                     UDPService().sendCommand(UDPService.CMD_TURNRIGHT);
                     setState(() => rotateRight = true);
                   },
@@ -103,17 +194,13 @@ class _HexaPodControlPageState
                           "images/left_up_arrow.png",
                           isLeftUpPressed,
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_WALK_L45,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_WALK_L45);
                             setState(() {
                               isLeftUpPressed = true;
                             });
                           },
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_STANDBY,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_STANDBY);
                             setState(() {
                               isLeftUpPressed = false;
                             });
@@ -128,16 +215,12 @@ class _HexaPodControlPageState
                                 UDPService.CMD_FASTFORWARD,
                               );
                             } else {
-                              UDPService().sendCommand(
-                                UDPService.CMD_WALK_0,
-                              );
+                              UDPService().sendCommand(UDPService.CMD_WALK_0);
                             }
                             setState(() => isForwardPressed = true);
                           },
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_STANDBY,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_STANDBY);
                             setState(() => isForwardPressed = false);
                           },
                         ),
@@ -145,17 +228,13 @@ class _HexaPodControlPageState
                           "images/right_up_arrow.png",
                           isRightUpPressed,
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_WALK_R45,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_WALK_R45);
                             setState(() {
                               isRightUpPressed = true;
                             });
                           },
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_STANDBY,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_STANDBY);
                             setState(() {
                               isRightUpPressed = false;
                             });
@@ -170,15 +249,11 @@ class _HexaPodControlPageState
                           Icons.arrow_back,
                           isLeftPressed,
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_WALK_L90,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_WALK_L90);
                             setState(() => isLeftPressed = true);
                           },
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_STANDBY,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_STANDBY);
                             setState(() => isLeftPressed = false);
                           },
                         ),
@@ -186,9 +261,7 @@ class _HexaPodControlPageState
                           Icons.stop,
                           isStandbyPressed,
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_STANDBY,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_STANDBY);
                             setState(() => isStandbyPressed = true);
                           },
                           () {
@@ -199,15 +272,11 @@ class _HexaPodControlPageState
                           Icons.arrow_forward,
                           isRightPressed,
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_WALK_R90,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_WALK_R90);
                             setState(() => isRightPressed = true);
                           },
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_STANDBY,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_STANDBY);
                             setState(() => isRightPressed = false);
                           },
                         ),
@@ -220,17 +289,13 @@ class _HexaPodControlPageState
                           "images/left_down_arrow.png",
                           isLeftDownPressed,
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_WALK_L135,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_WALK_L135);
                             setState(() {
                               isLeftDownPressed = true;
                             });
                           },
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_STANDBY,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_STANDBY);
                             setState(() {
                               isLeftDownPressed = false;
                             });
@@ -245,16 +310,12 @@ class _HexaPodControlPageState
                                 UDPService.CMD_FASTBACKWARD,
                               );
                             } else {
-                              UDPService().sendCommand(
-                                UDPService.CMD_WALK_180,
-                              );
+                              UDPService().sendCommand(UDPService.CMD_WALK_180);
                             }
                             setState(() => isBackwardPressed = true);
                           },
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_STANDBY,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_STANDBY);
                             setState(() => isBackwardPressed = false);
                           },
                         ),
@@ -262,17 +323,13 @@ class _HexaPodControlPageState
                           "images/right_down_arrow.png",
                           isRightDownPressed,
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_WALK_R135,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_WALK_R135);
                             setState(() {
                               isRightDownPressed = true;
                             });
                           },
                           () {
-                            UDPService().sendCommand(
-                              UDPService.CMD_STANDBY,
-                            );
+                            UDPService().sendCommand(UDPService.CMD_STANDBY);
                             setState(() {
                               isRightDownPressed = false;
                             });

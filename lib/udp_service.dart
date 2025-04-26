@@ -41,10 +41,12 @@ class UDPService {
   RawDatagramSocket? _socket;
   bool _isInitialized = false;
 
-  // Initialize the UDP sender with target IP and port
+  final StreamController<String> _receiveDataController = StreamController<String>.broadcast();
+  Stream<String> get receiveDataStream => _receiveDataController.stream;
+
   Future<void> initialize({String? ip, int? port}) async {
     if (_isInitialized) {
-      print('UDP sender already initialized');
+      print('UDP service already initialized');
       return;
     }
 
@@ -54,18 +56,38 @@ class UDPService {
     try {
       _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
       _isInitialized = true;
-      print('UDP sender initialized on ${_socket?.address.address}:${_socket?.port}');
-      print('Targeting $targetIp:$targetPort');
+      print('UDP service initialized on ${_socket?.address.address}:${_socket?.port}');
+      print('Targeting $_targetIp:$_targetPort');
+      _startListening(); // Start listening for incoming data
     } catch (e) {
-      print('Failed to initialize UDP sender: $e');
+      print('Failed to initialize UDP service: $e');
       rethrow;
     }
   }
 
-  // Send command to RC car
+  // Start listening for incoming UDP packets
+  void _startListening() {
+    _socket?.listen((RawSocketEvent event) {
+      if (event == RawSocketEvent.read) {
+        final Datagram? datagram = _socket?.receive();
+        if (datagram != null) {
+          try {
+            final receivedData = String.fromCharCodes(datagram.data);
+            final senderAddress = datagram.address;
+            final senderPort = datagram.port;
+            print('Received: "$receivedData" from ${senderAddress.address}:$senderPort');
+            _receiveDataController.add(receivedData); // Add received data to the stream
+          } catch (e) {
+            print('Error decoding received data: $e');
+          }
+        }
+      }
+    });
+  }
+
   void sendCommand(String command) {
     if (!_isInitialized) {
-      throw Exception('UDP sender not initialized. Call initialize() first.');
+      throw Exception('UDP service not initialized. Call initialize() first.');
     }
 
     if (!_isValidCommand(command)) {
@@ -86,10 +108,11 @@ class UDPService {
 
   // Clean up resources
   void dispose() {
+    _receiveDataController.close();
     _socket?.close();
     _socket = null;
     _isInitialized = false;
-    print('UDP sender disposed');
+    print('UDP service disposed');
   }
 
   // Getters
